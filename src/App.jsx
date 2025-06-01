@@ -17,12 +17,26 @@ function App() {
   const [currentView, setCurrentView] = useState('form'); // 'form' or 'review'
 
   useEffect(() => {
+    // Check for stored review data on mount
+    const storedReviewData = localStorage.getItem('reviewData');
+    if (storedReviewData) {
+      try {
+        const parsedData = JSON.parse(storedReviewData);
+        setReviewData(parsedData);
+        setCurrentView('review');
+      } catch (e) {
+        console.error('Error parsing stored review data:', e);
+      }
+    }
+
     // Set up navigation handler
     const handleNavigation = (data) => {
       console.log('Received navigation data:', data);
       setReviewData(data);
       setCurrentView('review');
       setIsLoading(false);
+      // Store the review data
+      localStorage.setItem('reviewData', JSON.stringify(data));
     };
 
     flutterBridge.onNavigationRequest(handleNavigation);
@@ -70,6 +84,21 @@ function App() {
     if (validationError) {
       flutterBridge.updateField(name, value, validationError);
     }
+  }
+
+  function handleNewSubmission() {
+    setCurrentView('form');
+    setReviewData(null);
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      message: ""
+    });
+    setErrors({});
+    // Clear stored review data
+    localStorage.removeItem('reviewData');
   }
 
   const renderField = (name, label, type = "text", placeholder = "") => (
@@ -165,18 +194,7 @@ function App() {
           <button 
             type="button" 
             className="submit-btn"
-            onClick={() => {
-              setCurrentView('form');
-              setReviewData(null);
-              setFormData({
-                firstName: "",
-                lastName: "",
-                email: "",
-                phone: "",
-                message: ""
-              });
-              setErrors({});
-            }}
+            onClick={handleNewSubmission}
           >
             Submit Another Form
           </button>
