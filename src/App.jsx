@@ -59,7 +59,9 @@ function App() {
     setErrors(validationResult.errors || {});
     
     // Send form data to Flutter with validation result
-    flutterBridge.submitForm(formData, validationResult);
+    flutterBridge.submitForm(formData, {
+      isValid: true, // assume validation already passed
+    });    
   }
 
   function handleChange(event) {

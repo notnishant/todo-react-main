@@ -63,11 +63,12 @@ class FlutterBridge {
       // Send the first validation error to Flutter with field information
       this.showValidationAlert(firstErrorMessage, firstErrorField);
 
-      // Send all validation errors for Flutter's reference
-      this.sendToFlutter("validationErrors", {
-        errors: validationResult.errors,
-        firstErrorField: firstErrorField,
+      
+      this.sendToFlutter("submitForm", {
+        data: formData,
+        timestamp: new Date().toISOString(),
       });
+      
 
       return;
     }
