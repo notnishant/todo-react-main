@@ -2,7 +2,7 @@ name: Deploy Vite App to GitHub Pages
 
 on:
   push:
-    branches: [ main ]  # Change if your main branch has a different name
+    branches: [ main ]  # Adjust if needed
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload artifact
+      - name: Upload dist folder to Pages artifact
         uses: actions/upload-pages-artifact@v2
         with:
           path: './dist'
