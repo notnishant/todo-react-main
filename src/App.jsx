@@ -18,21 +18,15 @@ function App() {
     event.preventDefault();
     setIsLoading(true);
     
-    // Validate all fields
     const validationResult = validateForm(formData);
-    
-    // Update local error state
     setErrors(validationResult.errors || {});
     
-    // Submit to Flutter (validation is handled in the bridge)
     flutterBridge.submitForm(formData, validationResult);
     setIsLoading(false);
   }
 
   function handleChange(event) {
     const { name, value } = event.target;
-    
-    // Validate the field as user types
     const validationError = validateField(name, value);
     
     setFormData(prevData => ({
@@ -40,7 +34,6 @@ function App() {
       [name]: value
     }));
 
-    // Update errors state
     setErrors(prev => ({
       ...prev,
       [name]: validationError
@@ -49,125 +42,69 @@ function App() {
 
   function handleBlur(event) {
     const { name, value } = event.target;
-    
-    // Validate on blur
     const validationError = validateField(name, value);
     
-    // Update errors state
     setErrors(prev => ({
       ...prev,
       [name]: validationError
     }));
 
-    // Show validation error in Flutter if any
     if (validationError) {
       flutterBridge.updateField(name, value, validationError);
     }
   }
 
+  const renderField = (name, label, type = "text", placeholder = "") => (
+    <div className="form-field">
+      <label htmlFor={name}>{label}</label>
+      {type === "textarea" ? (
+        <textarea
+          id={name}
+          name={name}
+          value={formData[name]}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          className={`input ${errors[name] ? 'input-error' : ''}`}
+          placeholder={placeholder}
+          disabled={isLoading}
+          rows={4}
+        />
+      ) : (
+        <input
+          type={type}
+          id={name}
+          name={name}
+          value={formData[name]}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          required={type !== "tel"}
+          className={`input ${errors[name] ? 'input-error' : ''}`}
+          placeholder={placeholder}
+          disabled={isLoading}
+        />
+      )}
+      {errors[name] && (
+        <p className="error-message">{errors[name]}</p>
+      )}
+    </div>
+  );
+
   return (
     <div className="form-container">
       <header className="app-header">
         <h1>Profile Details</h1>
+        <p className="app-description">Please fill in your information below</p>
       </header>
-      
-      <p className="app-description">Please fill in your information below</p>
       
       <form onSubmit={handleSubmit} noValidate>
         <div className="input-group">
-          <div className="form-field">
-            <label htmlFor="firstName">First Name</label>
-            <input
-              type="text"
-              id="firstName"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              className={`input ${errors.firstName ? 'input-error' : ''}`}
-              placeholder="John"
-              disabled={isLoading}
-            />
-            {errors.firstName && (
-              <p className="error-message">{errors.firstName}</p>
-            )}
-          </div>
-          
-          <div className="form-field">
-            <label htmlFor="lastName">Last Name</label>
-            <input
-              type="text"
-              id="lastName"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              className={`input ${errors.lastName ? 'input-error' : ''}`}
-              placeholder="Doe"
-              disabled={isLoading}
-            />
-            {errors.lastName && (
-              <p className="error-message">{errors.lastName}</p>
-            )}
-          </div>
+          {renderField("firstName", "First Name", "text", "John")}
+          {renderField("lastName", "Last Name", "text", "Doe")}
         </div>
 
-        <div className="form-field">
-          <label htmlFor="email">Email Address</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            required
-            className={`input ${errors.email ? 'input-error' : ''}`}
-            placeholder="john.doe@example.com"
-            disabled={isLoading}
-          />
-          {errors.email && (
-            <p className="error-message">{errors.email}</p>
-          )}
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="phone">Phone Number</label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`input ${errors.phone ? 'input-error' : ''}`}
-            placeholder="(123) 456-7890"
-            disabled={isLoading}
-          />
-          {errors.phone && (
-            <p className="error-message">{errors.phone}</p>
-          )}
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="message">Message (Optional)</label>
-          <textarea
-            id="message"
-            name="message"
-            value={formData.message}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`input ${errors.message ? 'input-error' : ''}`}
-            placeholder="Your message here..."
-            disabled={isLoading}
-            rows={4}
-          />
-          {errors.message && (
-            <p className="error-message">{errors.message}</p>
-          )}
-        </div>
+        {renderField("email", "Email Address", "email", "john.doe@example.com")}
+        {renderField("phone", "Phone Number", "tel", "(123) 456-7890")}
+        {renderField("message", "Message (Optional)", "textarea", "Your message here...")}
 
         <div className="submit-btn-container">
           <button 
