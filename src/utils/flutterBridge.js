@@ -6,6 +6,8 @@ const isInFlutterWeb = () => {
 class FlutterBridge {
   constructor() {
     this.isFlutter = isInFlutterWeb();
+    this.reviewCallbacks = [];
+    this.navigationCallbacks = [];
   }
 
   // Send data to Flutter
@@ -67,50 +69,31 @@ class FlutterBridge {
     }
   }
 
+  // Add a callback for navigation requests
+  onNavigationRequest(callback) {
+    this.navigationCallbacks.push(callback);
+  }
+
+  // Remove a navigation callback
+  removeNavigationCallback(callback) {
+    this.navigationCallbacks = this.navigationCallbacks.filter(
+      (cb) => cb !== callback
+    );
+  }
+
   // Handle messages from Flutter
-  handleFlutterMessage(event) {
+  handleFlutterMessage(message) {
     try {
-      const message = JSON.parse(event.data);
-      switch (message.type) {
-        case "prefilledData":
-          if (this.prefilledDataCallback) {
-            this.prefilledDataCallback(message.data);
-          }
-          break;
-        case "validationError":
-          if (this.validationErrorCallback) {
-            this.validationErrorCallback(message.data);
-          }
-          break;
-        case "submissionSuccess":
-          if (this.submissionSuccessCallback) {
-            this.submissionSuccessCallback(message.data);
-          }
+      const data = typeof message === "string" ? JSON.parse(message) : message;
+
+      switch (data.type) {
+        case "navigateToReview":
+          this.navigationCallbacks.forEach((callback) => callback(data.data));
           break;
       }
     } catch (e) {
       console.error("Error handling Flutter message:", e);
     }
-  }
-
-  // Handle validation errors from Flutter
-  handleValidationError(callback) {
-    this.validationErrorCallback = callback;
-  }
-
-  // Handle successful submission response from Flutter
-  handleSubmissionSuccess(callback) {
-    this.submissionSuccessCallback = callback;
-  }
-
-  // Handle pre-filled data from Flutter
-  handlePrefilledData(callback) {
-    this.prefilledDataCallback = callback;
-  }
-
-  // Request initial data from Flutter
-  requestInitialData() {
-    this.sendToFlutter("requestInitialData", {});
   }
 }
 
@@ -120,7 +103,7 @@ const flutterBridge = new FlutterBridge();
 // Set up global message handler
 if (typeof window !== "undefined") {
   window.receiveFromFlutter = (data) => {
-    flutterBridge.handleFlutterMessage({ data: JSON.stringify(data) });
+    flutterBridge.handleFlutterMessage(data);
   };
 }
 

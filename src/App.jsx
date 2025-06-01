@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import flutterBridge from "./utils/flutterBridge";
 import { validateField, validateForm } from "./utils/validation";
 
@@ -13,6 +13,24 @@ function App() {
 
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [reviewData, setReviewData] = useState(null);
+  const [currentView, setCurrentView] = useState('form'); // 'form' or 'review'
+
+  useEffect(() => {
+    // Set up navigation handler
+    const handleNavigation = (data) => {
+      setReviewData(data);
+      setCurrentView('review');
+      setIsLoading(false);
+    };
+
+    flutterBridge.onNavigationRequest(handleNavigation);
+
+    // Cleanup
+    return () => {
+      flutterBridge.removeNavigationCallback(handleNavigation);
+    };
+  }, []);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -22,7 +40,6 @@ function App() {
     setErrors(validationResult.errors || {});
     
     flutterBridge.submitForm(formData, validationResult);
-    setIsLoading(false);
   }
 
   function handleChange(event) {
@@ -89,6 +106,85 @@ function App() {
     </div>
   );
 
+  // Review screen component
+  if (currentView === 'review' && reviewData) {
+    return (
+      <div className="form-container">
+        <header className="app-header">
+          <h1>Submission Review</h1>
+          <p className="app-description">Your submission has been reviewed</p>
+        </header>
+
+        <div className="review-status">
+          <div className={`status-badge ${reviewData.status}`}>
+            {reviewData.status.charAt(0).toUpperCase() + reviewData.status.slice(1)}
+          </div>
+          <div className="rating">
+            Rating: {reviewData.rating} / 5
+          </div>
+        </div>
+
+        {reviewData.adminComments && (
+          <div className="admin-comments">
+            <h2>Admin Comments</h2>
+            <p>{reviewData.adminComments}</p>
+          </div>
+        )}
+
+        <div className="review-details">
+          <h2>Submission Details</h2>
+          <div className="details-grid">
+            <div className="detail-item">
+              <label>Name</label>
+              <p>{reviewData.firstName} {reviewData.lastName}</p>
+            </div>
+            <div className="detail-item">
+              <label>Email</label>
+              <p>{reviewData.email}</p>
+            </div>
+            <div className="detail-item">
+              <label>Phone</label>
+              <p>{reviewData.phone}</p>
+            </div>
+            {reviewData.message && (
+              <div className="detail-item full-width">
+                <label>Message</label>
+                <p>{reviewData.message}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="timestamps">
+          <p>Submitted: {new Date(reviewData.timestamp).toLocaleString()}</p>
+          <p>Reviewed: {new Date(reviewData.reviewedAt).toLocaleString()}</p>
+        </div>
+
+        <div className="submit-btn-container">
+          <button 
+            type="button" 
+            className="submit-btn"
+            onClick={() => {
+              setCurrentView('form');
+              setReviewData(null);
+              setFormData({
+                firstName: "",
+                lastName: "",
+                email: "",
+                phone: "",
+                message: ""
+              });
+              setErrors({});
+            }}
+          >
+            Submit Another Form
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Form screen component
   return (
     <div className="form-container">
       <header className="app-header">
