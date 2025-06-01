@@ -1,8 +1,9 @@
 // Check if we're running inside Flutter's WebView
 const isInFlutterWeb = () => {
   return (
-    window.flutter_inappwebview !== undefined ||
-    window.FlutterWebView !== undefined
+    window.showAlert !== undefined ||
+    window.updateField !== undefined ||
+    window.submitForm !== undefined
   );
 };
 
@@ -21,41 +22,15 @@ class FlutterBridge {
       return;
     }
 
-    // Support both flutter_inappwebview and standard Flutter WebView
-    if (window.flutter_inappwebview) {
-      window.flutter_inappwebview.callHandler(channel, data);
-    } else if (window.FlutterWebView) {
-      window.FlutterWebView.postMessage(
-        JSON.stringify({
-          channel,
-          data,
-        })
-      );
-    }
-  }
+    // Convert data to string if it's an object
+    const messageString =
+      typeof data === "object" ? JSON.stringify(data) : data;
 
-  // Register a handler for receiving messages from Flutter
-  registerFlutterHandler(channel, callback) {
-    if (!this.isFlutter) {
-      console.log("Not in Flutter WebView, handler not registered:", channel);
-      return;
-    }
-
-    if (window.flutter_inappwebview) {
-      // For flutter_inappwebview
-      window.flutter_inappwebview.addWebMessageListener(channel, callback);
-    } else if (window.FlutterWebView) {
-      // For standard Flutter WebView
-      window.addEventListener("message", (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message.channel === channel) {
-            callback(message.data);
-          }
-        } catch (e) {
-          console.error("Error parsing message from Flutter:", e);
-        }
-      });
+    // Use the specific channel if it exists
+    if (window[channel]) {
+      window[channel].postMessage(messageString);
+    } else {
+      console.warn(`Channel ${channel} not found in Flutter WebView`);
     }
   }
 
@@ -65,7 +40,7 @@ class FlutterBridge {
       type: "validation",
       title: "Validation Error",
       message: message,
-      field: field, // Add field information for focusing
+      field: field,
     });
   }
 
@@ -104,37 +79,71 @@ class FlutterBridge {
     });
   }
 
-  // Request initial data from Flutter
-  requestInitialData() {
-    this.sendToFlutter("requestInitialData", {});
-  }
-
   // Update form field with validation
   updateField(fieldName, value, validationError) {
     this.sendToFlutter("updateField", {
       field: fieldName,
-      value,
+      value: value,
       isValid: !validationError,
       error: validationError,
     });
   }
 
+  // Handle messages from Flutter
+  handleFlutterMessage(event) {
+    try {
+      const message = JSON.parse(event.data);
+      switch (message.type) {
+        case "prefilledData":
+          if (this.prefilledDataCallback) {
+            this.prefilledDataCallback(message.data);
+          }
+          break;
+        case "validationError":
+          if (this.validationErrorCallback) {
+            this.validationErrorCallback(message.data);
+          }
+          break;
+        case "submissionSuccess":
+          if (this.submissionSuccessCallback) {
+            this.submissionSuccessCallback(message.data);
+          }
+          break;
+      }
+    } catch (e) {
+      console.error("Error handling Flutter message:", e);
+    }
+  }
+
   // Handle validation errors from Flutter
   handleValidationError(callback) {
-    this.registerFlutterHandler("validationError", callback);
+    this.validationErrorCallback = callback;
   }
 
   // Handle successful submission response from Flutter
   handleSubmissionSuccess(callback) {
-    this.registerFlutterHandler("submissionSuccess", callback);
+    this.submissionSuccessCallback = callback;
   }
 
   // Handle pre-filled data from Flutter
   handlePrefilledData(callback) {
-    this.registerFlutterHandler("prefilledData", callback);
+    this.prefilledDataCallback = callback;
+  }
+
+  // Request initial data from Flutter
+  requestInitialData() {
+    this.sendToFlutter("requestInitialData", {});
   }
 }
 
 // Create and export a singleton instance
 const flutterBridge = new FlutterBridge();
+
+// Set up global message handler
+if (typeof window !== "undefined") {
+  window.receiveFromFlutter = (data) => {
+    flutterBridge.handleFlutterMessage({ data: JSON.stringify(data) });
+  };
+}
+
 export default flutterBridge;
