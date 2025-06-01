@@ -18,15 +18,23 @@ function App() {
   useEffect(() => {
     // Set up Flutter message handlers
     flutterBridge.handleValidationError((errorData) => {
-      setErrors(errorData);
+      setErrors(errorData.errors);
       setIsLoading(false);
+      
+      // Focus the first error field if provided
+      if (errorData.firstErrorField) {
+        const element = document.getElementById(errorData.firstErrorField);
+        if (element) {
+          element.focus();
+        }
+      }
     });
 
     flutterBridge.handleSubmissionSuccess((responseData) => {
       setSubmitted(true);
       setIsLoading(false);
+      setErrors({});
       flutterBridge.showSuccessAlert("Form submitted successfully!");
-      flutterBridge.sendToFlutter('formSubmitted', responseData);
     });
 
     flutterBridge.handlePrefilledData((data) => {
@@ -47,13 +55,9 @@ function App() {
     // Validate all fields
     const validationResult = validateForm(formData);
     
-    // Show validation errors but still allow submission
-    if (!validationResult.isValid) {
-      setErrors(validationResult.errors);
-      // Send validation errors to Flutter
-      flutterBridge.showValidationAlert(Object.values(validationResult.errors).join('\n'));
-    }
-
+    // Update local error state
+    setErrors(validationResult.errors || {});
+    
     // Send form data to Flutter with validation result
     flutterBridge.submitForm(formData, validationResult);
   }
@@ -84,17 +88,16 @@ function App() {
     
     // Validate on blur
     const validationError = validateField(name, value);
+    
+    // Update errors state
+    setErrors(prev => ({
+      ...prev,
+      [name]: validationError
+    }));
+
+    // Notify Flutter of validation on blur
     if (validationError) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: validationError
-      }));
-    } else {
-      // Clear error if field is valid
-      setErrors(prev => ({
-        ...prev,
-        [name]: null
-      }));
+      flutterBridge.showValidationAlert(validationError, name);
     }
   }
 
@@ -129,6 +132,14 @@ function App() {
             className="submit-btn" 
             onClick={() => {
               setSubmitted(false);
+              setFormData({
+                firstName: "",
+                lastName: "",
+                email: "",
+                phone: "",
+                message: ""
+              });
+              setErrors({});
               flutterBridge.sendToFlutter('resetForm', {});
             }}
           >
@@ -161,6 +172,7 @@ function App() {
               required
               className={`input ${errors.firstName ? 'input-error' : ''}`}
               placeholder="John"
+              disabled={isLoading}
             />
             {errors.firstName && (
               <p className="error-message">{errors.firstName}</p>
@@ -179,6 +191,7 @@ function App() {
               required
               className={`input ${errors.lastName ? 'input-error' : ''}`}
               placeholder="Doe"
+              disabled={isLoading}
             />
             {errors.lastName && (
               <p className="error-message">{errors.lastName}</p>
@@ -198,6 +211,7 @@ function App() {
             required
             className={`input ${errors.email ? 'input-error' : ''}`}
             placeholder="john.doe@example.com"
+            disabled={isLoading}
           />
           {errors.email && (
             <p className="error-message">{errors.email}</p>
@@ -215,6 +229,7 @@ function App() {
             onBlur={handleBlur}
             className={`input ${errors.phone ? 'input-error' : ''}`}
             placeholder="(123) 456-7890"
+            disabled={isLoading}
           />
           {errors.phone && (
             <p className="error-message">{errors.phone}</p>
@@ -232,6 +247,7 @@ function App() {
             className={`input textarea ${errors.message ? 'input-error' : ''}`}
             placeholder="Your message here..."
             rows="4"
+            disabled={isLoading}
           />
           {errors.message && (
             <p className="error-message">{errors.message}</p>

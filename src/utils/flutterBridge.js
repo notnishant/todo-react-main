@@ -60,11 +60,12 @@ class FlutterBridge {
   }
 
   // Show validation alert in Flutter
-  showValidationAlert(message) {
+  showValidationAlert(message, field = null) {
     this.sendToFlutter("showAlert", {
       type: "validation",
       title: "Validation Error",
       message: message,
+      field: field, // Add field information for focusing
     });
   }
 
@@ -80,14 +81,27 @@ class FlutterBridge {
   // Submit form data to Flutter with validation
   submitForm(formData, validationResult) {
     if (!validationResult.isValid) {
-      // Send validation errors to Flutter
-      this.showValidationAlert(
-        Object.values(validationResult.errors).join("\n")
-      );
+      // Find the first error and its field
+      const firstErrorField = Object.keys(validationResult.errors)[0];
+      const firstErrorMessage = validationResult.errors[firstErrorField];
+
+      // Send the first validation error to Flutter with field information
+      this.showValidationAlert(firstErrorMessage, firstErrorField);
+
+      // Send all validation errors for Flutter's reference
+      this.sendToFlutter("validationErrors", {
+        errors: validationResult.errors,
+        firstErrorField: firstErrorField,
+      });
+
       return;
     }
 
-    this.sendToFlutter("submitForm", formData);
+    // If validation passes, submit the form data
+    this.sendToFlutter("submitForm", {
+      data: formData,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   // Request initial data from Flutter
@@ -103,10 +117,6 @@ class FlutterBridge {
       isValid: !validationError,
       error: validationError,
     });
-
-    if (validationError) {
-      this.showValidationAlert(validationError);
-    }
   }
 
   // Handle validation errors from Flutter
