@@ -1,10 +1,6 @@
 // Check if we're running inside Flutter's WebView
 const isInFlutterWeb = () => {
-  return (
-    window.showAlert !== undefined ||
-    window.updateField !== undefined ||
-    window.submitForm !== undefined
-  );
+  return window.flutterChannel !== undefined;
 };
 
 class FlutterBridge {
@@ -13,81 +9,62 @@ class FlutterBridge {
   }
 
   // Send data to Flutter
-  sendToFlutter(channel, data) {
+  sendToFlutter(type, data) {
     if (!this.isFlutter) {
       console.log("Not in Flutter WebView, message not sent:", {
-        channel,
+        type,
         data,
       });
       return;
     }
 
-    // Convert data to string if it's an object
-    const messageString =
-      typeof data === "object" ? JSON.stringify(data) : data;
-
-    // Use the specific channel if it exists
-    if (window[channel]) {
-      window[channel].postMessage(messageString);
-    } else {
-      console.warn(`Channel ${channel} not found in Flutter WebView`);
-    }
+    window.flutterChannel.postMessage(
+      JSON.stringify({
+        type,
+        data,
+      })
+    );
   }
 
   // Show validation alert in Flutter
   showValidationAlert(message, field = null) {
-    this.sendToFlutter("showAlert", {
-      type: "validation",
+    this.sendToFlutter("alert", {
       title: "Validation Error",
       message: message,
+      isError: true,
       field: field,
     });
   }
 
   // Show success alert in Flutter
   showSuccessAlert(message) {
-    this.sendToFlutter("showAlert", {
-      type: "success",
+    this.sendToFlutter("alert", {
       title: "Success",
       message: message,
+      isError: false,
     });
   }
 
-  // Submit form data to Flutter with validation
+  // Submit form data to Flutter
   submitForm(formData, validationResult) {
     if (!validationResult.isValid) {
-      // Find the first error and its field
+      // Show validation error first
       const firstErrorField = Object.keys(validationResult.errors)[0];
       const firstErrorMessage = validationResult.errors[firstErrorField];
-
-      // Send the first validation error to Flutter with field information
       this.showValidationAlert(firstErrorMessage, firstErrorField);
-
-      
-      this.sendToFlutter("submitForm", {
-        data: formData,
-        timestamp: new Date().toISOString(),
-      });
-      
-
       return;
     }
 
     // If validation passes, submit the form data
-    this.sendToFlutter("submitForm", {
-      data: formData,
-      timestamp: new Date().toISOString(),
-    });
+    this.sendToFlutter("formSubmit", formData);
+    this.showSuccessAlert("Form submitted successfully!");
   }
 
   // Update form field with validation
   updateField(fieldName, value, validationError) {
-    this.sendToFlutter("updateField", {
-      field: fieldName,
-      value: value,
-      isValid: !validationError,
-      error: validationError,
-    });
+    if (validationError) {
+      this.showValidationAlert(validationError, fieldName);
+    }
   }
 
   // Handle messages from Flutter

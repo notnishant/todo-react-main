@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import flutterBridge from "./utils/flutterBridge";
 import { validateField, validateForm } from "./utils/validation";
 
@@ -11,41 +11,8 @@ function App() {
     message: ""
   });
 
-  const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    // Set up Flutter message handlers
-    flutterBridge.handleValidationError((errorData) => {
-      setErrors(errorData.errors);
-      setIsLoading(false);
-      
-      // Focus the first error field if provided
-      if (errorData.firstErrorField) {
-        const element = document.getElementById(errorData.firstErrorField);
-        if (element) {
-          element.focus();
-        }
-      }
-    });
-
-    flutterBridge.handleSubmissionSuccess((responseData) => {
-      setSubmitted(true);
-      setIsLoading(false);
-      setErrors({});
-    });
-
-    flutterBridge.handlePrefilledData((data) => {
-      setFormData(prevData => ({
-        ...prevData,
-        ...data
-      }));
-    });
-
-    // Request any pre-filled data from Flutter
-    flutterBridge.requestInitialData();
-  }, []);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -57,18 +24,9 @@ function App() {
     // Update local error state
     setErrors(validationResult.errors || {});
     
-    // If there are validation errors, show them first
-    if (!validationResult.isValid) {
-      setIsLoading(false);
-      // Find the first error and show it
-      const firstErrorField = Object.keys(validationResult.errors)[0];
-      const firstErrorMessage = validationResult.errors[firstErrorField];
-      flutterBridge.showValidationAlert(firstErrorMessage, firstErrorField);
-      return;
-    }
-    
-    // If validation passes, send form data to Flutter
+    // Submit to Flutter (validation is handled in the bridge)
     flutterBridge.submitForm(formData, validationResult);
+    setIsLoading(false);
   }
 
   function handleChange(event) {
@@ -87,9 +45,6 @@ function App() {
       ...prev,
       [name]: validationError
     }));
-
-    // Notify Flutter of field changes with validation
-    flutterBridge.updateField(name, value, validationError);
   }
 
   function handleBlur(event) {
@@ -104,63 +59,14 @@ function App() {
       [name]: validationError
     }));
 
-    // Notify Flutter of validation on blur
+    // Show validation error in Flutter if any
     if (validationError) {
-      flutterBridge.showValidationAlert(validationError, name);
+      flutterBridge.updateField(name, value, validationError);
     }
   }
 
-  if (submitted) {
-    return (
-      <div className="success-screen">
-        <h2>Thanks for submitting!</h2>
-        <p>We've received your information.</p>
-        <div className="details-card">
-          <h3>Your Details</h3>
-          <p>
-            <strong>Name</strong>
-            {formData.firstName} {formData.lastName}
-          </p>
-          <p>
-            <strong>Email</strong>
-            {formData.email}
-          </p>
-          <p>
-            <strong>Phone</strong>
-            {formData.phone}
-          </p>
-          {formData.message && (
-            <p>
-              <strong>Message</strong>
-              {formData.message}
-            </p>
-          )}
-        </div>
-        <div className="submit-btn-container">
-          <button 
-            className="submit-btn" 
-            onClick={() => {
-              setSubmitted(false);
-              setFormData({
-                firstName: "",
-                lastName: "",
-                email: "",
-                phone: "",
-                message: ""
-              });
-              setErrors({});
-              flutterBridge.sendToFlutter('resetForm', {});
-            }}
-          >
-            Submit Another Response
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <>
+    <div className="form-container">
       <header className="app-header">
         <h1>Profile Details</h1>
       </header>
@@ -253,10 +159,10 @@ function App() {
             value={formData.message}
             onChange={handleChange}
             onBlur={handleBlur}
-            className={`input textarea ${errors.message ? 'input-error' : ''}`}
+            className={`input ${errors.message ? 'input-error' : ''}`}
             placeholder="Your message here..."
-            rows="4"
             disabled={isLoading}
+            rows={4}
           />
           {errors.message && (
             <p className="error-message">{errors.message}</p>
@@ -269,11 +175,11 @@ function App() {
             className="submit-btn"
             disabled={isLoading}
           >
-            {isLoading ? 'Submitting...' : 'Submit Form'}
+            {isLoading ? 'Submitting...' : 'Submit'}
           </button>
         </div>
       </form>
-    </>
+    </div>
   );
 }
 
