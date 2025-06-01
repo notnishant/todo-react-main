@@ -28,26 +28,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true # This will enable GitHub Pages if it's not already enabled
+
       - name: Build
         uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc"
+          node-version: "18"
+
       - name: Run install
         uses: borales/actions-yarn@v5
         with:
           cmd: install
+
       - name: Build production bundle
         uses: borales/actions-yarn@v5
         with:
           cmd: build
 
-      - name: Setup pages
-        uses: actions/configure-pages@v5
       - name: Upload build artifacts
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload dist directory
           path: "dist"
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
