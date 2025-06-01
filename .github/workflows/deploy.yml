@@ -1,45 +1,48 @@
-name: Build and deploy to GH Pages
+name: Deploy Vite App to GitHub Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
-    branches: ["main"]
+    branches: [ main ]  # Change if your main branch has a different name
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
-  actions: write
-  deployments: write
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: '18'
 
       - name: Install dependencies
-        uses: borales/actions-yarn@v5
-        with:
-          cmd: install
+        run: npm ci
 
-      - name: Build
-        uses: borales/actions-yarn@v5
-        with:
-          cmd: build
+      - name: Build Vite project
+        run: npm run build
 
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: './dist'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+        id: deployment
+        uses: actions/deploy-pages@v3
