@@ -8,6 +8,7 @@ class FlutterBridge {
     this.isFlutter = isInFlutterWeb();
     this.reviewCallbacks = [];
     this.navigationCallbacks = [];
+    this.validationCallbacks = [];
 
     // Set up global message handler
     if (typeof window !== "undefined") {
@@ -49,6 +50,8 @@ class FlutterBridge {
       isError: true,
       field: field,
     });
+    // Notify validation callbacks
+    this.validationCallbacks.forEach((callback) => callback());
   }
 
   // Show success alert in Flutter
@@ -67,12 +70,13 @@ class FlutterBridge {
       const firstErrorField = Object.keys(validationResult.errors)[0];
       const firstErrorMessage = validationResult.errors[firstErrorField];
       this.showValidationAlert(firstErrorMessage, firstErrorField);
-      return;
+      return false; // Return false to indicate validation failure
     }
 
     // If validation passes, submit the form data
     this.sendToFlutter("formSubmit", formData);
     this.showSuccessAlert("Form submitted successfully!");
+    return true; // Return true to indicate successful submission
   }
 
   // Update form field with validation
@@ -90,6 +94,18 @@ class FlutterBridge {
   // Remove a navigation callback
   removeNavigationCallback(callback) {
     this.navigationCallbacks = this.navigationCallbacks.filter(
+      (cb) => cb !== callback
+    );
+  }
+
+  // Add a callback for validation failures
+  onValidationFailure(callback) {
+    this.validationCallbacks.push(callback);
+  }
+
+  // Remove a validation callback
+  removeValidationCallback(callback) {
+    this.validationCallbacks = this.validationCallbacks.filter(
       (cb) => cb !== callback
     );
   }

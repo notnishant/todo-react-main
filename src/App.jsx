@@ -39,11 +39,18 @@ function App() {
       localStorage.setItem('reviewData', JSON.stringify(data));
     };
 
+    // Set up validation failure handler
+    const handleValidationFailure = () => {
+      setIsLoading(false);
+    };
+
     flutterBridge.onNavigationRequest(handleNavigation);
+    flutterBridge.onValidationFailure(handleValidationFailure);
 
     // Cleanup
     return () => {
       flutterBridge.removeNavigationCallback(handleNavigation);
+      flutterBridge.removeValidationCallback(handleValidationFailure);
     };
   }, []);
 
@@ -54,7 +61,11 @@ function App() {
     const validationResult = validateForm(formData);
     setErrors(validationResult.errors || {});
     
-    flutterBridge.submitForm(formData, validationResult);
+    // Only keep loading state if validation passed
+    const submitted = flutterBridge.submitForm(formData, validationResult);
+    if (!submitted) {
+      setIsLoading(false);
+    }
   }
 
   function handleChange(event) {
@@ -97,6 +108,7 @@ function App() {
       message: ""
     });
     setErrors({});
+    setIsLoading(false);
     // Clear stored review data
     localStorage.removeItem('reviewData');
   }
@@ -213,12 +225,12 @@ function App() {
       
       <form onSubmit={handleSubmit} noValidate>
         <div className="input-group">
-          {renderField("firstName", "First Name", "text", "John")}
-          {renderField("lastName", "Last Name", "text", "Doe")}
+          {renderField("firstName", "First Name", "text", "Suresh")}
+          {renderField("lastName", "Last Name", "text", "Kumar")}
         </div>
 
-        {renderField("email", "Email Address", "email", "john.doe@example.com")}
-        {renderField("phone", "Phone Number", "tel", "(123) 456-7890")}
+        {renderField("email", "Email Address", "email", "Suresh.kumar@example.com")}
+        {renderField("phone", "Phone Number", "tel", "9876543210")}
         {renderField("message", "Message (Optional)", "textarea", "Your message here...")}
 
         <div className="submit-btn-container">
