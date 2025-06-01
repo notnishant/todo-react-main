@@ -34,7 +34,6 @@ function App() {
       setSubmitted(true);
       setIsLoading(false);
       setErrors({});
-      flutterBridge.showSuccessAlert("Form submitted successfully!");
     });
 
     flutterBridge.handlePrefilledData((data) => {
@@ -58,10 +57,18 @@ function App() {
     // Update local error state
     setErrors(validationResult.errors || {});
     
-    // Send form data to Flutter with validation result
-    flutterBridge.submitForm(formData, {
-      isValid: true, // assume validation already passed
-    });    
+    // If there are validation errors, show them first
+    if (!validationResult.isValid) {
+      setIsLoading(false);
+      // Find the first error and show it
+      const firstErrorField = Object.keys(validationResult.errors)[0];
+      const firstErrorMessage = validationResult.errors[firstErrorField];
+      flutterBridge.showValidationAlert(firstErrorMessage, firstErrorField);
+      return;
+    }
+    
+    // If validation passes, send form data to Flutter
+    flutterBridge.submitForm(formData, validationResult);
   }
 
   function handleChange(event) {
