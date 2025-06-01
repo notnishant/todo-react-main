@@ -19,6 +19,7 @@ function App() {
   useEffect(() => {
     // Set up navigation handler
     const handleNavigation = (data) => {
+      console.log('Received navigation data:', data);
       setReviewData(data);
       setCurrentView('review');
       setIsLoading(false);
@@ -120,7 +121,7 @@ function App() {
             {reviewData.status.charAt(0).toUpperCase() + reviewData.status.slice(1)}
           </div>
           <div className="rating">
-            Rating: {reviewData.rating} / 5
+            Rating: {Math.round(reviewData.rating)} / 5
           </div>
         </div>
 

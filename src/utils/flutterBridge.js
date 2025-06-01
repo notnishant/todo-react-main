@@ -8,6 +8,19 @@ class FlutterBridge {
     this.isFlutter = isInFlutterWeb();
     this.reviewCallbacks = [];
     this.navigationCallbacks = [];
+
+    // Set up global message handler
+    if (typeof window !== "undefined") {
+      window.receiveFromFlutter = (message) => {
+        try {
+          const data =
+            typeof message === "string" ? JSON.parse(message) : message;
+          this.handleFlutterMessage(data);
+        } catch (e) {
+          console.error("Error processing Flutter message:", e);
+        }
+      };
+    }
   }
 
   // Send data to Flutter
@@ -84,12 +97,16 @@ class FlutterBridge {
   // Handle messages from Flutter
   handleFlutterMessage(message) {
     try {
+      console.log("Received message from Flutter:", message);
       const data = typeof message === "string" ? JSON.parse(message) : message;
 
       switch (data.type) {
         case "navigateToReview":
+          console.log("Processing navigation request with data:", data.data);
           this.navigationCallbacks.forEach((callback) => callback(data.data));
           break;
+        default:
+          console.log("Unknown message type:", data.type);
       }
     } catch (e) {
       console.error("Error handling Flutter message:", e);
@@ -99,12 +116,5 @@ class FlutterBridge {
 
 // Create and export a singleton instance
 const flutterBridge = new FlutterBridge();
-
-// Set up global message handler
-if (typeof window !== "undefined") {
-  window.receiveFromFlutter = (data) => {
-    flutterBridge.handleFlutterMessage(data);
-  };
-}
 
 export default flutterBridge;
